@@ -1,72 +1,57 @@
 import {
   Injectable,
-  Inject,
   BadRequestException,
   InternalServerErrorException,
+  Inject,
 } from '@nestjs/common';
-import { SupabaseClient } from '@supabase/supabase-js';
-import { User } from '../../types/User';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { PostgrestSingleResponse } from '@supabase/postgrest-js';
-import { LoggerService } from '../../shared/services/LoggerService';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+
+import { User } from '../../schemas/user.schema';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/response-user.dto';
-import { plainToInstance } from 'class-transformer';
+
+import { LoggerService } from '../../shared/services/LoggerService';
 import { AuthService } from '../auth/auth.service';
-import { SupabaseAdminProvider } from '../../config/SupasbaseAdminProvider';
+import { plainToInstance } from 'class-transformer';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
-  private readonly supabaseAdmin: SupabaseClient;
   constructor(
-    private readonly supabaseAdminProvider: SupabaseAdminProvider,
+    @InjectModel(User.name) private readonly userModel: Model<User>,
     private readonly logger: LoggerService,
     private readonly authService: AuthService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) {
-    this.supabaseAdmin = this.supabaseAdminProvider.getClient();
-  }
+  ) {}
 
-  async create(user: CreateUserDto): Promise<User> {
+
+
+  async create(userDto: CreateUserDto): Promise<void> {
     const cacheKey = 'users:all';
     const cachedUsers = await this.cacheManager.get<User[]>(cacheKey);
-    let response;
 
-    if (cachedUsers) {
-      const userExists = cachedUsers.some(
-        (cachedUser) => cachedUser.email === user.email,
-      );
-      if (userExists) {
-        this.logger.warn('Email already exists (from cache):', {
-          email: user.email,
-        });
-        throw new BadRequestException('Email already exists');
-      }
+    if (cachedUsers?.some((u) => u.email === userDto.email)) {
+      this.logger.warn('Email already exists (from cache):', {
+        email: userDto.email,
+      });
+      throw new BadRequestException('Email already exists');
     }
 
     try {
-      response = await this.authService.createUser(user.email, user.password);
-      user.user_id = response.user.id;
-      this.logger.info('User created successfully in auth service:');
+      const hashedPassword = await bcrypt.hash(userDto.password, 10);
+      const user = new this.userModel({
+        ...userDto,
+        password: hashedPassword,
+      });
 
-      const { password, ...userWithoutPassword } = user;
-      console.log('User without password:', userWithoutPassword);
-
-      const { data, error } = await this.supabaseAdmin
-        .from('ta_users')
-        .insert(userWithoutPassword)
-        .single();
-
-      if (error) {
-        this.logger.error('Error creating user:', error);
-        throw new BadRequestException(`Error creating user: ${error.message}`);
-      }
-
-      this.logger.info('User created successfully:', data);
+      await user.save();
+      this.logger.info('User created successfully in DB');
       await this.refreshCache();
-      return data;
+
     } catch (err) {
       this.logger.error('Unexpected error in create:', err);
       throw new InternalServerErrorException(
@@ -75,24 +60,23 @@ export class UsersService {
     }
   }
 
-  async findAll(supabase: SupabaseClient): Promise<UserResponseDto[]> {
+
+
+  async findAll(): Promise<UserResponseDto[]> {
     try {
       const cacheKey = 'users:all';
       const cachedUsers = await this.cacheManager.get<User[]>(cacheKey);
+
       if (cachedUsers) {
         this.logger.info('Returning cached users');
         return plainToInstance(UserResponseDto, cachedUsers);
       }
 
-      const { data, error } = await supabase.from('ta_users').select('*');
-      if (error) {
-        this.logger.error('Error fetching users:', error);
-        throw new BadRequestException(`Error fetching users: ${error.message}`);
-      }
+      const users = await this.userModel.find().lean().exec();
+      this.logger.info('Fetched users successfully');
 
-      this.logger.info('Fetched users successfully:', data);
-      await this.cacheManager.set(cacheKey, data, 0);
-      return plainToInstance(UserResponseDto, data);
+      await this.cacheManager.set(cacheKey, users, 0);
+      return plainToInstance(UserResponseDto, users);
     } catch (err) {
       this.logger.error('Unexpected error in findAll:', err);
       throw new InternalServerErrorException(
@@ -101,35 +85,27 @@ export class UsersService {
     }
   }
 
-  async findOne(
-    id: string,
-    supabase: SupabaseClient,
-  ): Promise<UserResponseDto> {
+
+
+  async findOne(id: string): Promise<UserResponseDto> {
+    console.log('findOne called with id:', id);
     try {
       const cacheKey = `users:${id}`;
       const cachedUser = await this.cacheManager.get<User>(cacheKey);
+
       if (cachedUser) {
         this.logger.info(`Returning cached user with ID: ${id}`);
         return plainToInstance(UserResponseDto, cachedUser);
       }
 
-      const response: PostgrestSingleResponse<User> = await supabase
-        .from('ta_users')
-        .select('*')
-        .eq('user_id', id)
-        .single();
+      const user = await this.userModel.findById(id).lean().exec();
 
-      const { data, error } = response;
-      if (error) {
-        this.logger.error('Error fetching user:', error);
-        throw new BadRequestException(
-          `Error fetching user with id ${id}: ${error.message}`,
-        );
+      if (!user) {
+        throw new BadRequestException(`User with id ${id} not found`);
       }
 
-      this.logger.info('Fetched user successfully:', data);
-      await this.cacheManager.set(cacheKey, data, 0);
-      return plainToInstance(UserResponseDto, data);
+      await this.cacheManager.set(cacheKey, user, 0);
+      return plainToInstance(UserResponseDto, user);
     } catch (err) {
       this.logger.error('Unexpected error in findOne:', err);
       throw new InternalServerErrorException(
@@ -138,74 +114,55 @@ export class UsersService {
     }
   }
 
-  async update(
-    id: string,
-    updates: UpdateUserDto,
-    supabase: SupabaseClient,
-  ): Promise<User> {
+
+  async update(id: string, updates: UpdateUserDto): Promise<User> {
     try {
-      const { data, error } = await supabase
-        .from('ta_users')
-        .update(updates)
-        .eq('user_id', id)
-        .single();
-
-      if (error) {
-        this.logger.error('Error updating user:', error);
-        throw new BadRequestException(`Error updating user: ${error.message}`);
+      const user = await this.userModel.findByIdAndUpdate(
+        id,
+        { $set: updates },
+        { new: true },
+      ).lean();
+      if (!user) {
+        this.logger.warn(`User with ID ${id} not found`);
+        throw new BadRequestException(`User with id ${id} not found`);
       }
-
-      if (updates.email || updates.password) {
-        const authUpdates: { email?: string; password?: string } = {};
-        if (updates.email) {
-          authUpdates.email = updates.email;
-        }
-        if (updates.password) {
-          authUpdates.password = updates.password;
-        }
-
-        const { data: authData, error: authError } = await this.supabaseAdmin.auth.admin.updateUserById(id, authUpdates);
-
-        if (authError) {
-          this.logger.error('Error updating user in auth service:', authError);
-          throw new BadRequestException(`Error updating user in auth service: ${authError.message}`);
-        }
-
-        this.logger.info('User updated successfully in auth service:', authData);
-      }
-
-      this.logger.info('User updated successfully:', data);
-      await this.cacheManager.del(`users:${id}`);
+      this.logger.info('User updated successfully:', { id });
+      await this.cacheManager.set(`users:${id}`, user, 0);
       await this.refreshCache();
-      return data;
+      return user;
     } catch (err) {
-      this.logger.error('Unexpected error in update:', err);
+      this.logger.error('Error updating user:', err);
       throw new InternalServerErrorException(
         'An unexpected error occurred while updating the user.',
       );
     }
   }
 
-  async remove(id: string, supabase: SupabaseClient): Promise<void> {
+  async remove(id: string): Promise<void> {
     try {
-      await this.authService.deleteUser(id);
-    } catch (error) {
-      this.logger.error('Error deleting user in auth service:', error);
-      throw new Error(`Error deleting user in auth service: ${error.message}`);
+      await this.userModel.findByIdAndDelete(id).exec();
+
+      this.logger.info('User deleted successfully:', { id });
+      await this.cacheManager.del(`users:${id}`);
+      await this.refreshCache();
+    } catch (err) {
+      this.logger.error('Error deleting user:', err);
+      throw new InternalServerErrorException(
+        'An unexpected error occurred while deleting the user.',
+      );
     }
-    this.logger.info('User deleted successfully:', { id });
-    await this.refreshCache();
   }
 
+
+
   async refreshCache(): Promise<void> {
-    const { data, error } = await this.supabaseAdmin
-      .from('ta_users')
-      .select('*');
-    if (error) {
-      this.logger.error('Error refreshing users cache:', error);
-      throw new Error(`Error refreshing users cache: ${error.message}`);
+    try {
+      const users = await this.userModel.find().exec();
+      await this.cacheManager.set('users:all', users, 0);
+      this.logger.info('Users cache refreshed');
+    } catch (err) {
+      this.logger.error('Error refreshing cache:', err);
+      throw new Error(`Error refreshing cache: ${err.message}`);
     }
-    this.logger.info('Refreshing users cache with latest data');
-    await this.cacheManager.set('users:all', data, 0);
   }
 }

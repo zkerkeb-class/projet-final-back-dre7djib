@@ -6,7 +6,6 @@ import {
   Patch,
   Param,
   Delete,
-  ParseUUIDPipe,
   UseInterceptors,
   ClassSerializerInterceptor,
   UseGuards,
@@ -18,69 +17,48 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { HttpExceptionFilter } from '../../common/filters/HttpExceptionFilter';
 import { UserResponseDto } from './dto/response-user.dto';
 import { AuthGuard } from '../../common/guards/AuthGuard';
-import { SupabaseClient } from '@supabase/supabase-js';
-import { SupabaseDecorator } from '../../common/decorator/SupabaseDecorator';
+import { ParseMongoIdPipe } from '../../common/pipe/ParseMongoIdPipe';
 
 @Controller('users')
+@UseInterceptors(ClassSerializerInterceptor)
+@UseFilters(new HttpExceptionFilter())
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @UseInterceptors(ClassSerializerInterceptor)
-  @UseFilters(new HttpExceptionFilter())
-  create(
-    @Body() createUserDto: CreateUserDto,
-  ) {
-    return this.usersService.create(createUserDto);
+  async create(@Body() createUserDto: CreateUserDto) {
+    await this.usersService.create(createUserDto);
+    return { message: 'User created successfully' };
   }
 
   @Get()
   @UseGuards(AuthGuard)
-  @UseInterceptors(ClassSerializerInterceptor)
-  @UseFilters(new HttpExceptionFilter())
-  async findAll(
-    @SupabaseDecorator() supabase: SupabaseClient,
-  ): Promise<UserResponseDto[]> {
-    const users = await this.usersService.findAll(supabase);
+  async findAll(): Promise<UserResponseDto[]> {
+    const users = await this.usersService.findAll();
     return users.map((user) => new UserResponseDto(user));
   }
 
   @Get(':id')
   @UseGuards(AuthGuard)
-  @UseInterceptors(ClassSerializerInterceptor)
-  @UseFilters(new HttpExceptionFilter())
-  async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
-    @SupabaseDecorator() supabase: SupabaseClient,
-  ) {
-    const user = await this.usersService.findOne(id, supabase);
-    return new UserResponseDto({
-      ...user,
-      user_id: user.user_id.toString(),
-      created_at: new Date(user.created_at),
-    });
+  async findOne(@Param('id', ParseMongoIdPipe) id: string): Promise<UserResponseDto> {
+    const user = await this.usersService.findOne(id);
+    return new UserResponseDto(user);
   }
 
   @Patch(':id')
   @UseGuards(AuthGuard)
-  @UseInterceptors(ClassSerializerInterceptor)
-  @UseFilters(new HttpExceptionFilter())
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() updateUserDto: UpdateUserDto,
-    @SupabaseDecorator() supabase: SupabaseClient,
-  ) {
-    return this.usersService.update(id, updateUserDto, supabase);
+  async update(
+    @Param('id', ParseMongoIdPipe) id: string,
+    @Body() updateUserDto: UpdateUserDto
+  ): Promise<UserResponseDto> {
+    const user = await this.usersService.update(id, updateUserDto);
+    return new UserResponseDto(user);
   }
 
   @Delete(':id')
   @UseGuards(AuthGuard)
-  @UseInterceptors(ClassSerializerInterceptor)
-  @UseFilters(new HttpExceptionFilter())
-  remove(
-    @Param('id') id: string,
-    @SupabaseDecorator() supabase: SupabaseClient,
-  ) {
-    return this.usersService.remove(id, supabase);
+  async remove(@Param('id', ParseMongoIdPipe) id: string) {
+    await this.usersService.remove(id);
+    return { message: 'User deleted successfully' };
   }
 }

@@ -13,6 +13,7 @@ import { TravelModule } from './modules/travel/travel.module';
 import { StepModule } from './modules/step/step.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
 import * as redisStore from 'cache-manager-redis-store';
+import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [
@@ -33,6 +34,8 @@ import * as redisStore from 'cache-manager-redis-store';
     TravelModule,
     StepModule,
     SubscriptionModule,
+    MongooseModule.forRoot('mongodb://localhost:27017/app-voyage'),
+
   ],
   controllers: [AppController],
   providers: [
