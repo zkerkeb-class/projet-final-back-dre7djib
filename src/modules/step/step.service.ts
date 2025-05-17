@@ -172,9 +172,18 @@ async create(
       for (const step of steps) {
         const stepKey = `step:${step._id}`;
         await this.cacheManager.set(stepKey, step, 0);
+      }
 
-        const travelKey = `step:travel:${step.travel_id}`;
-        const travelSteps = await this.stepModel.find({ travel_id: step.travel_id }).lean().exec();
+      const travelStepsMap = new Map<string, Step[]>();
+      for (const step of steps) {
+        const travelId = step.travel_id?.toString();
+        if (!travelStepsMap.has(travelId)) {
+          travelStepsMap.set(travelId, []);
+        }
+        travelStepsMap.get(travelId)!.push(step);
+      }
+      for (const [travelId, travelSteps] of travelStepsMap.entries()) {
+        const travelKey = `step:travel:${travelId}`;
         await this.cacheManager.set(travelKey, travelSteps, 0);
       }
     } catch (err) {

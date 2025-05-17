@@ -176,9 +176,18 @@ export class TravelService {
       for (const travel of travels) {
         const travelKey = `travel:${travel._id}`;
         await this.cacheManager.set(travelKey, travel, 0);
+      }
 
-        const userKey = `travel:user:${travel.get('user_id')}`;
-        const userTravels = await this.userModel.find({ user_id: travel.get('user_id') }).exec();
+      const userTravelsMap = new Map<string, Travel[]>();
+      for (const travel of travels) {
+        const userId = travel.get('user_id')?.toString();
+        if (!userTravelsMap.has(userId)) {
+          userTravelsMap.set(userId, []);
+        }
+        userTravelsMap.get(userId)!.push(travel);
+      }
+      for (const [userId, userTravels] of userTravelsMap.entries()) {
+        const userKey = `travel:user:${userId}`;
         await this.cacheManager.set(userKey, userTravels, 0);
       }
     } catch (err) {
