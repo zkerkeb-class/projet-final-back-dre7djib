@@ -1,13 +1,23 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseFilters, UseInterceptors, UseGuards, ClassSerializerInterceptor } from '@nestjs/common';
-import { SubscriptionService } from './subscription.service';
-import { CreateSubscriptionDto } from './dto/create-subscription.dto';
-import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
-import { SupabaseClient } from '@supabase/supabase-js';
-import { SupabaseDecorator } from '../../common/decorator/SupabaseDecorator';
-import { AuthGuard } from '../../common/guards/AuthGuard';
-import { HttpExceptionFilter } from '../../common/filters/HttpExceptionFilter';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseFilters,
+  UseInterceptors,
+  UseGuards,
+  ClassSerializerInterceptor,
+} from "@nestjs/common";
+import { SubscriptionService } from "./subscription.service";
+import { CreateSubscriptionDto } from "./dto/create-subscription.dto";
+import { UpdateSubscriptionDto } from "./dto/update-subscription.dto";
+import { AuthGuard } from "../../common/guards/AuthGuard";
+import { HttpExceptionFilter } from "../../common/filters/HttpExceptionFilter";
 
-@Controller('subscription')
+@Controller("subscription")
 export class SubscriptionController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
 
@@ -27,36 +37,38 @@ export class SubscriptionController {
     return this.subscriptionService.findAll();
   }
 
-  @Get(':id')
+  @Get(":id")
   @UseGuards(AuthGuard)
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
-  findOne(@Param('id') id: string) {
+  findOne(@Param("id") id: string) {
     return this.subscriptionService.findOne(id);
   }
 
-  @Get('user/:id')
+  @Get("user/:id")
   @UseGuards(AuthGuard)
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
-  findOneByUserId(@Param('id') id: string) {
+  findOneByUserId(@Param("id") id: string) {
     return this.subscriptionService.findOneByUserId(id);
   }
 
-
-  @Patch(':id')
+  @Patch(":id")
   @UseGuards(AuthGuard)
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
-  update(@Param('id') id: string, @Body() updateSubscriptionDto: UpdateSubscriptionDto) {
+  update(
+    @Param("id") id: string,
+    @Body() updateSubscriptionDto: UpdateSubscriptionDto,
+  ) {
     return this.subscriptionService.update(id, updateSubscriptionDto);
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @UseGuards(AuthGuard)
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
-  remove(@Param('id') id: string) {
+  remove(@Param("id") id: string) {
     return this.subscriptionService.remove(id);
   }
 }

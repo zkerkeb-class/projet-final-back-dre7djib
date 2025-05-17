@@ -10,16 +10,16 @@ import {
   ClassSerializerInterceptor,
   UseGuards,
   UseFilters,
-} from '@nestjs/common';
-import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { HttpExceptionFilter } from '../../common/filters/HttpExceptionFilter';
-import { UserResponseDto } from './dto/response-user.dto';
-import { AuthGuard } from '../../common/guards/AuthGuard';
-import { ParseMongoIdPipe } from '../../common/pipe/ParseMongoIdPipe';
+} from "@nestjs/common";
+import { UsersService } from "./users.service";
+import { CreateUserDto } from "./dto/create-user.dto";
+import { UpdateUserDto } from "./dto/update-user.dto";
+import { HttpExceptionFilter } from "../../common/filters/HttpExceptionFilter";
+import { UserResponseDto } from "./dto/response-user.dto";
+import { AuthGuard } from "../../common/guards/AuthGuard";
+import { ParseMongoIdPipe } from "../../common/pipe/ParseMongoIdPipe";
 
-@Controller('users')
+@Controller("users")
 @UseInterceptors(ClassSerializerInterceptor)
 @UseFilters(new HttpExceptionFilter())
 export class UsersController {
@@ -28,7 +28,7 @@ export class UsersController {
   @Post()
   async create(@Body() createUserDto: CreateUserDto) {
     await this.usersService.create(createUserDto);
-    return { message: 'User created successfully' };
+    return { message: "User created successfully" };
   }
 
   @Get()
@@ -38,27 +38,29 @@ export class UsersController {
     return users.map((user) => new UserResponseDto(user));
   }
 
-  @Get(':id')
+  @Get(":id")
   @UseGuards(AuthGuard)
-  async findOne(@Param('id', ParseMongoIdPipe) id: string): Promise<UserResponseDto> {
+  async findOne(
+    @Param("id", ParseMongoIdPipe) id: string,
+  ): Promise<UserResponseDto> {
     const user = await this.usersService.findOne(id);
     return new UserResponseDto(user);
   }
 
-  @Patch(':id')
+  @Patch(":id")
   @UseGuards(AuthGuard)
   async update(
-    @Param('id', ParseMongoIdPipe) id: string,
-    @Body() updateUserDto: UpdateUserDto
+    @Param("id", ParseMongoIdPipe) id: string,
+    @Body() updateUserDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
     const user = await this.usersService.update(id, updateUserDto);
     return new UserResponseDto(user);
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @UseGuards(AuthGuard)
-  async remove(@Param('id', ParseMongoIdPipe) id: string) {
+  async remove(@Param("id", ParseMongoIdPipe) id: string) {
     await this.usersService.remove(id);
-    return { message: 'User deleted successfully' };
+    return { message: "User deleted successfully" };
   }
 }

@@ -5,25 +5,25 @@ export class ResponseSubscriptionDto {
     Object.assign(this, partial);
   }
 
-  @Expose({ name: 'id' })
+  @Expose({ name: "id" })
   @Transform(({ obj }) => obj._id?.toString?.() ?? obj._id)
   id: string;
 
   @Expose()
   user_id: string;
 
-    @Expose()
+  @Expose()
   stripe_customer_id: string;
 
-    @Expose()
+  @Expose()
   statut: string;
 
-    @Expose()
+  @Expose()
   start_date: string;
 
-    @Expose()
+  @Expose()
   end_date: string;
 
-    @Expose()
+  @Expose()
   created_at: string;
 }

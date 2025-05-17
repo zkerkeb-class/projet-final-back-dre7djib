@@ -3,10 +3,10 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
-} from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
-import { LoggerService } from '../../shared/services/LoggerService';
+} from "@nestjs/common";
+import { Observable } from "rxjs";
+import { tap } from "rxjs/operators";
+import { LoggerService } from "../../shared/services/LoggerService";
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
@@ -18,13 +18,13 @@ export class LoggingInterceptor implements NestInterceptor {
       .getRequest();
     const { method, url } = request;
 
-    this.loggerService.info('Incoming request', { method, url });
+    this.loggerService.info("Incoming request", { method, url });
 
     const now = Date.now();
     return next.handle().pipe(
       tap(() => {
         const responseTime = Date.now() - now;
-        this.loggerService.info('Request completed', {
+        this.loggerService.info("Request completed", {
           method,
           url,
           responseTime,

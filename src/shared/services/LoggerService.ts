@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { createLogger, transports, Logger } from 'winston';
-import ecsFormat from '@elastic/ecs-winston-format';
+import { Injectable } from "@nestjs/common";
+import { createLogger, transports, Logger } from "winston";
+import ecsFormat from "@elastic/ecs-winston-format";
 
 @Injectable()
 export class LoggerService {
@@ -8,11 +8,11 @@ export class LoggerService {
 
   constructor() {
     this.logger = createLogger({
-      level: 'info',
+      level: "info",
       format: ecsFormat(),
       transports: [
         new transports.Console(),
-        new transports.File({ filename: 'logs/app.log' }),
+        new transports.File({ filename: "logs/app.log" }),
       ],
     });
   }

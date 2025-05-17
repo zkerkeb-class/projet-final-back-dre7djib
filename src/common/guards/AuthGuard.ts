@@ -3,12 +3,11 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { Request } from 'express';
-import { ConfigService } from '@nestjs/config';
-import { SupabaseProvider } from '../../config/SupabaseProvider';
-import { LoggerService } from '../../shared/services/LoggerService';
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { Request } from "express";
+import { ConfigService } from "@nestjs/config";
+import { LoggerService } from "../../shared/services/LoggerService";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -20,7 +19,7 @@ export class AuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const authEnabled =
-      this.configService.get<string>('AUTH_ENABLED') === 'true';
+      this.configService.get<string>("AUTH_ENABLED") === "true";
     const request = context.switchToHttp().getRequest<Request>();
 
     if (!authEnabled) return true;
@@ -29,23 +28,20 @@ export class AuthGuard implements CanActivate {
     if (!token) throw new UnauthorizedException();
 
     try {
-      const payload: Record<string, any> = await this.jwtService.verifyAsync(
-        token,
-        {
-          secret: this.configService.get<string>('JWT_SECRET'),
-        },
-      );
+      await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get<string>("JWT_SECRET"),
+      });
     } catch {
-      this.logger.error('Invalid token');
+      this.logger.error("Invalid token");
       throw new UnauthorizedException();
     }
 
-    this.logger.info('Token verified successfully');
+    this.logger.info("Token verified successfully");
     return true;
   }
 
   private extractTokenFromHeader(request: Request): string | undefined {
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    return type === 'Bearer' ? token : undefined;
+    const [type, token] = request.headers.authorization?.split(" ") ?? [];
+    return type === "Bearer" ? token : undefined;
   }
 }

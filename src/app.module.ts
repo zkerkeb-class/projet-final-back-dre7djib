@@ -1,26 +1,25 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { SupabaseProvider } from './config/SupabaseProvider';
-import { UsersModule } from './modules/users/users.module';
-import { APP_INTERCEPTOR } from '@nestjs/core';
-import { LoggingInterceptor } from './common/interceptors/LoggerInterceptor';
-import { LoggerService } from './shared/services/LoggerService';
-import { CacheModule } from '@nestjs/cache-manager';
-import { AuthModule } from './modules/auth/auth.module';
-import { TravelModule } from './modules/travel/travel.module';
-import { StepModule } from './modules/step/step.module';
-import { SubscriptionModule } from './modules/subscription/subscription.module';
-import * as redisStore from 'cache-manager-redis-store';
-import { MongooseModule } from '@nestjs/mongoose';
+import { Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
+import { AppController } from "./app.controller";
+import { AppService } from "./app.service";
+import { UsersModule } from "./modules/users/users.module";
+import { APP_INTERCEPTOR } from "@nestjs/core";
+import { LoggingInterceptor } from "./common/interceptors/LoggerInterceptor";
+import { LoggerService } from "./shared/services/LoggerService";
+import { CacheModule } from "@nestjs/cache-manager";
+import { AuthModule } from "./modules/auth/auth.module";
+import { TravelModule } from "./modules/travel/travel.module";
+import { StepModule } from "./modules/step/step.module";
+import { SubscriptionModule } from "./modules/subscription/subscription.module";
+import * as redisStore from "cache-manager-redis-store";
+import { MongooseModule } from "@nestjs/mongoose";
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
-      envFilePath: ['.env'],
+      envFilePath: [".env"],
     }),
     UsersModule,
     CacheModule.register({
@@ -34,13 +33,11 @@ import { MongooseModule } from '@nestjs/mongoose';
     TravelModule,
     StepModule,
     SubscriptionModule,
-    MongooseModule.forRoot('mongodb://localhost:27017/app-voyage'),
-
+    MongooseModule.forRoot("mongodb://localhost:27017/app-voyage"),
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    SupabaseProvider,
     LoggerService,
     {
       provide: APP_INTERCEPTOR,

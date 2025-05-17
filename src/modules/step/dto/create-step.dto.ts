@@ -1,4 +1,4 @@
-import { IsJSON, IsOptional, IsString } from 'class-validator';
+import { IsJSON, IsOptional, IsString } from "class-validator";
 
 export class CreateStepDto {
   @IsString()
