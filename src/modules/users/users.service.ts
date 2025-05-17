@@ -7,15 +7,12 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
-
+import { Cache } from 'cache-manager'; 
 import { User } from '../../schemas/user.schema';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/response-user.dto';
-
 import { LoggerService } from '../../shared/services/LoggerService';
-import { AuthService } from '../auth/auth.service';
 import { plainToInstance } from 'class-transformer';
 import * as bcrypt from 'bcrypt';
 
@@ -24,7 +21,6 @@ export class UsersService {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<User>,
     private readonly logger: LoggerService,
-    private readonly authService: AuthService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 

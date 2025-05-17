@@ -1,52 +1,38 @@
-import { Injectable } from '@nestjs/common';
-import { SupabaseAdminProvider } from '../../config/SupasbaseAdminProvider';
-import { SupabaseClient } from '@supabase/supabase-js';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { LoggerService } from '../../shared/services/LoggerService';
+import { JwtService } from '@nestjs/jwt';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { User } from '../../schemas/user.schema';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
-  private readonly supabase: SupabaseClient;
 
   constructor(
-    private readonly supabaseProvider: SupabaseAdminProvider,
+    @InjectModel(User.name) private readonly userModel: Model<User>,
     private readonly logger: LoggerService,
-  ) {
-    this.supabase = this.supabaseProvider.getClient();
+    private jwtService: JwtService,
+  ) {}
+
+  async login(email: string, password: string): Promise<{ access_token: string }> {
+    const user = await this.userModel.findOne({ email }).exec();
+    if (!user) {
+      this.logger.error('User not found:', { email });
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      this.logger.error('Invalid password for:', { email });
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const payload = { sub: user._id, email: user.email };
+    const access_token = await this.jwtService.signAsync(payload);
+
+    this.logger.info('User logged in successfully:', { email });
+    return { access_token };
   }
 
-  async login(email: string, password: string): Promise<object> {
-    const { data, error } = await this.supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) {
-      this.logger.error('Error logging in:', error);
-      throw new Error(`Error logging in: ${error.message}`);
-    }
-    this.logger.info('User logged in successfully in auth service:');
-    return data;
-  }
-
-  async createUser(email: string, password: string): Promise<object> {
-    const { data, error } = await this.supabase.auth.signUp({
-      email,
-      password,
-    });
-    if (error) {
-      this.logger.error('Error creating user:', error);
-      throw new Error(`Error creating user: ${error.message}`);
-    }
-    this.logger.info('User created successfully in auth service:');
-    return data;
-  }
-
-  async deleteUser(userId: string): Promise<object> {
-    const { data, error } = await this.supabase.auth.admin.deleteUser(userId);
-    if (error) {
-      this.logger.error('Error deleting user:', error);
-      throw new Error(`Error deleting user: ${error.message}`);
-    }
-    this.logger.info('User deleted successfully in auth service:');
-    return data;
-  }
 }

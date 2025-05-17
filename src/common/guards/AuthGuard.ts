@@ -15,7 +15,6 @@ export class AuthGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly supabaseProvider: SupabaseProvider,
     private readonly logger: LoggerService,
   ) {}
 
@@ -36,10 +35,6 @@ export class AuthGuard implements CanActivate {
           secret: this.configService.get<string>('JWT_SECRET'),
         },
       );
-
-      (request as any).user = payload;
-      (request as any).supabase =
-        this.supabaseProvider.getClientWithToken(token);
     } catch {
       this.logger.error('Invalid token');
       throw new UnauthorizedException();
