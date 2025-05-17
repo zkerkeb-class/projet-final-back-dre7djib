@@ -1,10 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-@Schema({ timestamps: { createdAt: true, updatedAt: false } })
+@Schema({ timestamps: { createdAt: true, updatedAt: true } })
 export class Subscription extends Document {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  user: Types.ObjectId;
+  user_id: Types.ObjectId;
 
   @Prop()
   stripe_customer_id: string;

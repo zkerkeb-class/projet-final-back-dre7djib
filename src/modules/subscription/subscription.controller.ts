@@ -15,32 +15,32 @@ export class SubscriptionController {
   @UseGuards(AuthGuard)
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
-  create(@Body() createSubscriptionDto: CreateSubscriptionDto, @SupabaseDecorator() supabase: SupabaseClient) {
-    return this.subscriptionService.create(createSubscriptionDto, supabase);
+  create(@Body() createSubscriptionDto: CreateSubscriptionDto) {
+    return this.subscriptionService.create(createSubscriptionDto);
   }
 
   @Get()
   @UseGuards(AuthGuard)
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
-  findAll(@SupabaseDecorator() supabase: SupabaseClient) {
-    return this.subscriptionService.findAll(supabase);
+  findAll() {
+    return this.subscriptionService.findAll();
   }
 
   @Get(':id')
   @UseGuards(AuthGuard)
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
-  findOne(@Param('id') id: string, @SupabaseDecorator() supabase: SupabaseClient) {
-    return this.subscriptionService.findOne(id, supabase);
+  findOne(@Param('id') id: string) {
+    return this.subscriptionService.findOne(id);
   }
 
   @Get('user/:id')
   @UseGuards(AuthGuard)
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
-  findOneByUserId(@Param('id') id: string, @SupabaseDecorator() supabase: SupabaseClient) {
-    return this.subscriptionService.findOneByUserId(id, supabase);
+  findOneByUserId(@Param('id') id: string) {
+    return this.subscriptionService.findOneByUserId(id);
   }
 
 
@@ -48,15 +48,15 @@ export class SubscriptionController {
   @UseGuards(AuthGuard)
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
-  update(@Param('id') id: string, @Body() updateSubscriptionDto: UpdateSubscriptionDto, @SupabaseDecorator() supabase: SupabaseClient) {
-    return this.subscriptionService.update(id, updateSubscriptionDto, supabase);
+  update(@Param('id') id: string, @Body() updateSubscriptionDto: UpdateSubscriptionDto) {
+    return this.subscriptionService.update(id, updateSubscriptionDto);
   }
 
   @Delete(':id')
   @UseGuards(AuthGuard)
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
-  remove(@Param('id') id: string, @SupabaseDecorator() supabase: SupabaseClient) {
-    return this.subscriptionService.remove(id, supabase);
+  remove(@Param('id') id: string) {
+    return this.subscriptionService.remove(id);
   }
 }
