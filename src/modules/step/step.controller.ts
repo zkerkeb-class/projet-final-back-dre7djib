@@ -16,8 +16,6 @@ import { CreateStepDto } from './dto/create-step.dto';
 import { UpdateStepDto } from './dto/update-step.dto';
 import { HttpExceptionFilter } from '../../common/filters/HttpExceptionFilter';
 import { AuthGuard } from '../../common/guards/AuthGuard';
-import { SupabaseClient } from '@supabase/supabase-js';
-import { SupabaseDecorator } from '../../common/decorator/SupabaseDecorator';
 
 @Controller('step')
 export class StepController {
@@ -28,18 +26,17 @@ export class StepController {
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
   create(
-    @Body() createStepDto: CreateStepDto,
-    @SupabaseDecorator() supabase: SupabaseClient,
+    @Body() createStepDto: CreateStepDto
   ) {
-    return this.stepService.create(createStepDto, supabase);
+    return this.stepService.create(createStepDto);
   }
 
   @Get()
   @UseGuards(AuthGuard)
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
-  findAll(@SupabaseDecorator() supabase: SupabaseClient) {
-    return this.stepService.findAll(supabase);
+  findAll() {
+    return this.stepService.findAll();
   }
 
   @Get('travel/:id')
@@ -47,10 +44,9 @@ export class StepController {
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
   findAllByTravelId(
-    @Param('id') id: string,
-    @SupabaseDecorator() supabase: SupabaseClient,
+    @Param('id') id: string
   ) {
-    return this.stepService.findAllByTravelId(id, supabase);
+    return this.stepService.findAllByTravelId(id);
   }
 
   @Get(':id')
@@ -58,10 +54,9 @@ export class StepController {
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
   findOne(
-    @Param('id') id: string,
-    @SupabaseDecorator() supabase: SupabaseClient,
+    @Param('id') id: string
   ) {
-    return this.stepService.findOne(id, supabase);
+    return this.stepService.findOne(id);
   }
 
   @Patch(':id')
@@ -70,10 +65,9 @@ export class StepController {
   @UseFilters(new HttpExceptionFilter())
   update(
     @Param('id') id: string,
-    @Body() updateStepDto: UpdateStepDto,
-    @SupabaseDecorator() supabase: SupabaseClient,
+    @Body() updateStepDto: UpdateStepDto
   ) {
-    return this.stepService.update(id, updateStepDto, supabase);
+    return this.stepService.update(id, updateStepDto);
   }
 
   @Delete(':id')
@@ -81,9 +75,8 @@ export class StepController {
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
   remove(
-    @Param('id') id: string,
-    @SupabaseDecorator() supabase: SupabaseClient,
+    @Param('id') id: string
   ) {
-    return this.stepService.remove(id, supabase);
+    return this.stepService.remove(id);
   }
 }

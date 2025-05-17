@@ -6,50 +6,43 @@ import {
 } from '@nestjs/common';
 import { CreateStepDto } from './dto/create-step.dto';
 import { UpdateStepDto } from './dto/update-step.dto';
-import { SupabaseProvider } from '../../config/SupabaseProvider';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { LoggerService } from '../../shared/services/LoggerService';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { plainToInstance } from 'class-transformer';
-import { Step } from '../../types/Step';
+import { Step } from '../../schemas/step.schema';
 import { ResponseStepDto } from './dto/response-step.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class StepService {
   constructor(
-    private readonly supabaseProvider: SupabaseProvider,
+    @InjectModel(Step.name) private readonly stepModel: Model<Step>,
     private readonly logger: LoggerService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  async create(
-    createStepDto: CreateStepDto,
-    supabase: SupabaseClient,
-  ): Promise<Step> {
-    try {
-      const { data, error } = await supabase
-        .from('ta_step')
-        .insert(createStepDto)
-        .single();
+async create(
+  createStepDto: CreateStepDto,
+): Promise<Step> {
+  try {
+    this.logger.info('Creating step:', createStepDto);
+    const createdStep = await this.stepModel.create(createStepDto);
 
-      if (error) {
-        this.logger.error('Error creating step:', error);
-        throw new BadRequestException(`Error creating step: ${error.message}`);
-      }
-
-      this.logger.info('Step created successfully:', data);
-      await this.refreshCache(supabase);
-      return data;
-    } catch (err) {
-      this.logger.error('Unexpected error in create:', err);
-      throw new InternalServerErrorException(
-        'An unexpected error occurred while creating step.',
-      );
-    }
+    this.logger.info('Step created successfully:', createdStep);
+    await this.refreshCache();  
+    return createdStep.toObject();
+  } catch (err) {
+    this.logger.error('Unexpected error in create:', err);
+    throw new InternalServerErrorException(
+      'An unexpected error occurred while creating step.',
+    );
   }
+}
 
-  async findAll(supabase: SupabaseClient): Promise<ResponseStepDto[]> {
+  async findAll(): Promise<ResponseStepDto[]> {
     try {
       const cacheKey = 'step:all';
       const cachedStep = await this.cacheManager.get<Step[]>(cacheKey);
@@ -58,15 +51,11 @@ export class StepService {
         return plainToInstance(ResponseStepDto, cachedStep);
       }
 
-      const { data, error } = await supabase.from('ta_step').select('*');
-      if (error) {
-        this.logger.error('Error fetching step:', error);
-        throw new BadRequestException(`Error fetching step: ${error.message}`);
-      }
+      const steps = await this.stepModel.find().lean().exec();
+      this.logger.info('Step fetched successfully:', steps);
 
-      this.logger.info('Step fetched successfully:', data);
-      await this.cacheManager.set(cacheKey, data, 0);
-      return plainToInstance(ResponseStepDto, data);
+      await this.cacheManager.set(cacheKey, steps, 0);
+      return plainToInstance(ResponseStepDto, steps);
     } catch (err) {
       this.logger.error('Unexpected error in findAll:', err);
       throw new InternalServerErrorException(
@@ -75,31 +64,20 @@ export class StepService {
     }
   }
 
-  async findAllByTravelId(
-    id: string,
-    supabase: SupabaseClient,
-  ): Promise<ResponseStepDto[]> {
+  async findAllByTravelId(travelId: string): Promise<ResponseStepDto[]> {
     try {
-      const cacheKey = `step:travel:${id}`;
+      const cacheKey = `step:travel:${travelId}`;
       const cachedStep = await this.cacheManager.get<Step[]>(cacheKey);
       if (cachedStep) {
         this.logger.info('Returning cached step');
         return plainToInstance(ResponseStepDto, cachedStep);
       }
 
-      const { data, error } = await supabase
-        .from('ta_step')
-        .select('*')
-        .eq('travel_id', id);
+      const steps = await this.stepModel.find({ travel_id: travelId }).lean().exec();
+      this.logger.info('Step fetched successfully:', steps);
 
-      if (error) {
-        this.logger.error('Error fetching step:', error);
-        throw new BadRequestException(`Error fetching step: ${error.message}`);
-      }
-
-      this.logger.info('Step fetched successfully:', data);
-      await this.cacheManager.set(cacheKey, data, 0);
-      return plainToInstance(ResponseStepDto, data);
+      await this.cacheManager.set(cacheKey, steps, 0);
+      return plainToInstance(ResponseStepDto, steps);
     } catch (err) {
       this.logger.error('Unexpected error in findAllByTravelId:', err);
       throw new InternalServerErrorException(
@@ -108,10 +86,7 @@ export class StepService {
     }
   }
 
-  async findOne(
-    id: string,
-    supabase: SupabaseClient,
-  ): Promise<ResponseStepDto> {
+  async findOne(id: string): Promise<ResponseStepDto> {
     try {
       const cacheKey = `step:${id}`;
       const cachedStep = await this.cacheManager.get<Step>(cacheKey);
@@ -120,19 +95,18 @@ export class StepService {
         return plainToInstance(ResponseStepDto, cachedStep);
       }
 
-      const { data, error } = await supabase
-        .from('ta_step')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const step = await this.stepModel.findById(id).lean().exec();
 
-      if (error) {
-        this.logger.error('Error fetching step:', error);
-        throw new BadRequestException(`Error fetching step: ${error.message}`);
+      if (!step) {
+        this.logger.error('Step not found with id:', { id });
+        throw new BadRequestException(
+          `Step not found with id: ${id}`,
+        );
       }
 
-      this.logger.info('Step fetched successfully:', data);
-      return plainToInstance(ResponseStepDto, data);
+      this.logger.info('Step fetched successfully:', step);
+      await this.cacheManager.set(cacheKey, step, 0);
+      return plainToInstance(ResponseStepDto, step);
     } catch (err) {
       this.logger.error('Unexpected error in findOne:', err);
       throw new InternalServerErrorException(
@@ -141,26 +115,24 @@ export class StepService {
     }
   }
 
-  async update(
-    id: string,
-    updateStepDto: UpdateStepDto,
-    supabase: SupabaseClient,
-  ) {
+  async update(id: string, updateStepDto: UpdateStepDto): Promise<ResponseStepDto> {
     try {
-      const { data, error } = await supabase
-        .from('ta_step')
-        .update(updateStepDto)
-        .eq('id', id)
-        .single();
+      const updatedStep = await this.stepModel.findByIdAndUpdate(
+        id,
+        updateStepDto,
+        { new: true },
+      ).lean().exec();
 
-      if (error) {
-        this.logger.error('Error updating step:', error);
-        throw new BadRequestException(`Error updating step: ${error.message}`);
+      if (!updatedStep) {
+        this.logger.error('Step not found with id:', { id });
+        throw new BadRequestException(
+          `Step not found with id: ${id}`,
+        );
       }
 
-      this.logger.info('Step updated successfully:', data);
-      await this.refreshCache(supabase);
-      return plainToInstance(ResponseStepDto, data);
+      this.logger.info('Step updated successfully:', updatedStep);
+      await this.refreshCache();
+      return plainToInstance(ResponseStepDto, updatedStep);
     } catch (err) {
       this.logger.error('Unexpected error in update:', err);
       throw new InternalServerErrorException(
@@ -169,21 +141,19 @@ export class StepService {
     }
   }
 
-  async remove(id: string, supabase: SupabaseClient): Promise<void> {
+  async remove(id: string): Promise<void> {
     try {
-      const { data, error } = await supabase
-        .from('ta_step')
-        .delete()
-        .eq('id', id)
-        .single();
+      const deletedStep = await this.stepModel.findByIdAndDelete(id).lean().exec();
 
-      if (error) {
-        this.logger.error('Error deleting step:', error);
-        throw new BadRequestException(`Error deleting step: ${error.message}`);
+      if (!deletedStep) {
+        this.logger.error('Step not found with id:', { id });
+        throw new BadRequestException(
+          `Step not found with id: ${id}`,
+        );
       }
 
-      this.logger.info('Step deleted successfully:', data);
-      await this.refreshCache(supabase);
+      this.logger.info('Step deleted successfully:', deletedStep);
+      await this.refreshCache();
     } catch (err) {
       this.logger.error('Unexpected error in remove:', err);
       throw new InternalServerErrorException(
@@ -192,33 +162,20 @@ export class StepService {
     }
   }
 
-  async refreshCache(supabase: SupabaseClient): Promise<void> {
+  async refreshCache(): Promise<void> {
     try {
-      const { data, error } = await supabase.from('ta_step').select('*');
+      const steps = await this.stepModel.find().lean().exec();
 
-      if (error) {
-        this.logger.error('Error refreshing cache:', error);
-        throw new BadRequestException(
-          `Error refreshing cache: ${error.message}`,
-        );
-      }
+      this.logger.info('Cache refreshed successfully:', steps);
+      await this.cacheManager.set('step:all', steps, 0);
 
-      this.logger.info('Cache refreshed successfully:', data);
-
-      await this.cacheManager.set('step:all', data, 0);
-
-      for (const step of data) {
-        const stepKey = `step:${step.id}`;
+      for (const step of steps) {
+        const stepKey = `step:${step._id}`;
         await this.cacheManager.set(stepKey, step, 0);
 
         const travelKey = `step:travel:${step.travel_id}`;
-        const travelSteps =
-          (await this.cacheManager.get<Step[]>(travelKey)) || [];
-        const updatedTravelSteps = [
-          ...travelSteps.filter((s) => s.id !== step.id),
-          step,
-        ];
-        await this.cacheManager.set(travelKey, updatedTravelSteps, 0);
+        const travelSteps = await this.stepModel.find({ travel_id: step.travel_id }).lean().exec();
+        await this.cacheManager.set(travelKey, travelSteps, 0);
       }
     } catch (err) {
       this.logger.error('Unexpected error in refreshCache:', err);
