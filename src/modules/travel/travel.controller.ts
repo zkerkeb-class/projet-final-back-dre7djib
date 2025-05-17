@@ -28,18 +28,17 @@ export class TravelController {
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
   create(
-    @Body() createTravelDto: CreateTravelDto,
-    @SupabaseDecorator() supabase: SupabaseClient,
+    @Body() createTravelDto: CreateTravelDto
   ) {
-    return this.travelService.create(createTravelDto, supabase);
+    return this.travelService.create(createTravelDto);
   }
 
   @Get()
   @UseGuards(AuthGuard)
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
-  findAll(@SupabaseDecorator() supabase: SupabaseClient) {
-    return this.travelService.findAll(supabase);
+  findAll() {
+    return this.travelService.findAll();
   }
 
   @Get('user/:id')
@@ -47,10 +46,9 @@ export class TravelController {
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
   findAllByUserId(
-    @Param('id') id: string,
-    @SupabaseDecorator() supabase: SupabaseClient,
+    @Param('id') id: string
   ) {
-    return this.travelService.findAllByUserId(id, supabase);
+    return this.travelService.findAllByUserId(id);
   }
 
   @Get(':id')
@@ -58,10 +56,9 @@ export class TravelController {
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
   findOne(
-    @Param('id') id: string,
-    @SupabaseDecorator() supabase: SupabaseClient,
+    @Param('id') id: string
   ) {
-    return this.travelService.findOne(id, supabase);
+    return this.travelService.findOne(id);
   }
 
   @Patch(':id')
@@ -70,10 +67,9 @@ export class TravelController {
   @UseInterceptors(ClassSerializerInterceptor)
   update(
     @Param('id') id: string,
-    @Body() updateTravelDto: UpdateTravelDto,
-    @SupabaseDecorator() supabase: SupabaseClient,
+    @Body() updateTravelDto: UpdateTravelDto
   ) {
-    return this.travelService.update(id, updateTravelDto, supabase);
+    return this.travelService.update(id, updateTravelDto);
   }
 
   @Delete(':id')
@@ -81,9 +77,8 @@ export class TravelController {
   @UseInterceptors(ClassSerializerInterceptor)
   @UseFilters(new HttpExceptionFilter())
   remove(
-    @Param('id') id: string,
-    @SupabaseDecorator() supabase: SupabaseClient,
+    @Param('id') id: string
   ) {
-    return this.travelService.remove(id, supabase);
+    return this.travelService.remove(id);
   }
 }

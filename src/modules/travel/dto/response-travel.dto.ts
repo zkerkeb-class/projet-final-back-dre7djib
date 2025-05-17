@@ -1,11 +1,12 @@
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 
 export class TravelResponseDto {
   constructor(partial: Partial<TravelResponseDto>) {
     Object.assign(this, partial);
   }
 
-  @Expose()
+  @Expose({ name: 'id' })
+  @Transform(({ obj }) => obj._id?.toString?.() ?? obj._id)
   id: string;
 
   @Expose()

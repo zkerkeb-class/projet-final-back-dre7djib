@@ -4,9 +4,9 @@ import { Document, Types } from 'mongoose';
 @Schema({ timestamps: true })
 export class Travel extends Document {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  user: Types.ObjectId;
+  user_id: Types.ObjectId;
 
-  @Prop()
+  @Prop({required: true})
   title: string;
 
   @Prop()

@@ -6,44 +6,31 @@ import {
 } from '@nestjs/common';
 import { CreateTravelDto } from './dto/create-travel.dto';
 import { UpdateTravelDto } from './dto/update-travel.dto';
-import { SupabaseProvider } from '../../config/SupabaseProvider';
-import { SupabaseClient } from '@supabase/supabase-js';
 import { LoggerService } from '../../shared/services/LoggerService';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { plainToInstance } from 'class-transformer';
-import { Travel } from 'src/types/Travel';
 import { TravelResponseDto } from './dto/response-travel.dto';
-
-@Injectable()
+import { Travel } from '../../schemas/travel.schema';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 export class TravelService {
   constructor(
-    private readonly supabaseProvider: SupabaseProvider,
+    @InjectModel(Travel.name) private readonly userModel: Model<Travel>,
     private readonly logger: LoggerService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async create(
     travel: CreateTravelDto,
-    supabase: SupabaseClient,
   ): Promise<Travel> {
     try {
-      console.log('Creating travel:', travel);
-      const { data, error } = await supabase
-        .from('ta_travels')
-        .insert(travel)
-        .single();
+      this.logger.info('Creating travel:', travel);
+      const createdTravel = await this.userModel.create(travel);
 
-      if (error) {
-        this.logger.error('Error creating travel:', error);
-        throw new BadRequestException(
-          `Error creating travel: ${error.message}`,
-        );
-      }
-
-      this.logger.info('Travel created successfully:', data);
-      await this.refreshCache(supabase);
-      return data;
+      this.logger.info('Travel created successfully:', createdTravel);
+      await this.refreshCache();  
+      return createdTravel.toObject();
     } catch (err) {
       this.logger.error('Unexpected error in create:', err);
       throw new InternalServerErrorException(
@@ -52,26 +39,20 @@ export class TravelService {
     }
   }
 
-  async findAll(supabase: SupabaseClient) {
+  async findAll(): Promise<TravelResponseDto[]> {
     try {
       const cacheKey = 'travel:all';
-      const cachedTravel = await this.cacheManager.get(cacheKey);
+      const cachedTravel = await this.cacheManager.get<Travel[]>(cacheKey);
       if (cachedTravel) {
         this.logger.info('Returning cached travel');
-        return cachedTravel;
+        return plainToInstance(TravelResponseDto, cachedTravel);
       }
 
-      const { data, error } = await supabase.from('ta_travels').select('*');
-      if (error) {
-        this.logger.error('Error fetching travel:', error);
-        throw new BadRequestException(
-          `Error fetching travel: ${error.message}`,
-        );
-      }
+      const travels = await this.userModel.find().lean().exec();
+      this.logger.info('Travel fetched successfully:', travels);
 
-      this.logger.info('Travel fetched successfully:', data);
-      await this.cacheManager.set(cacheKey, data, 0);
-      return plainToInstance(CreateTravelDto, data);
+      await this.cacheManager.set(cacheKey, travels, 0);
+      return plainToInstance(TravelResponseDto, travels);
     } catch (err) {
       this.logger.error('Unexpected error in findAll:', err);
       throw new InternalServerErrorException(
@@ -80,30 +61,20 @@ export class TravelService {
     }
   }
 
-  async findAllByUserId(userId: string, supabase: SupabaseClient) {
+  async findAllByUserId(userId: string): Promise<TravelResponseDto[]> {
     try {
       const cacheKey = `travel:user:${userId}`;
-      const cachedTravel = await this.cacheManager.get(cacheKey);
+      const cachedTravel = await this.cacheManager.get<Travel[]>(cacheKey);
       if (cachedTravel) {
         this.logger.info('Returning cached travel');
-        return cachedTravel;
+        return plainToInstance(TravelResponseDto, cachedTravel);
       }
 
-      const { data, error } = await supabase
-        .from('ta_travels')
-        .select('*')
-        .eq('user_id', userId);
+      const travels = await this.userModel.find({ user_id: userId }).lean().exec();
 
-      if (error) {
-        this.logger.error('Error fetching travel:', error);
-        throw new BadRequestException(
-          `Error fetching travel: ${error.message}`,
-        );
-      }
-
-      this.logger.info('Travel fetched successfully:', data);
-      await this.cacheManager.set(cacheKey, data, 0);
-      return plainToInstance(CreateTravelDto, data);
+      this.logger.info('Travel fetched successfully:', travels);
+      await this.cacheManager.set(cacheKey, travels, 0);
+      return plainToInstance(TravelResponseDto, travels);
     } catch (err) {
       this.logger.error('Unexpected error in findAllByUserId:', err);
       throw new InternalServerErrorException(
@@ -112,31 +83,27 @@ export class TravelService {
     }
   }
 
-  async findOne(id: string, supabase: SupabaseClient) {
+  async findOne(id: string): Promise<TravelResponseDto> {
     try {
       const cacheKey = `travel:${id}`;
-      const cachedTravel = await this.cacheManager.get(cacheKey);
+      const cachedTravel = await this.cacheManager.get<Travel>(cacheKey);
       if (cachedTravel) {
         this.logger.info('Returning cached travel:', cachedTravel);
-        return cachedTravel;
+        return plainToInstance(TravelResponseDto, cachedTravel);
       }
 
-      const { data, error } = await supabase
-        .from('ta_travels')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const travel = await this.userModel.findById(id).lean().exec();
 
-      if (error) {
-        this.logger.error('Error fetching travel:', error);
+      if (!travel) {
+        this.logger.error('Travel not found with id:', {id});
         throw new BadRequestException(
-          `Error fetching travel: ${error.message}`,
+          `Travel not found with id: ${id}`,
         );
       }
 
-      this.logger.info('Travel fetched successfully:', data);
-      await this.cacheManager.set(cacheKey, data, 0);
-      return plainToInstance(TravelResponseDto, data);
+      this.logger.info('Travel fetched successfully:', travel);
+      await this.cacheManager.set(cacheKey, travel, 0);
+      return plainToInstance(TravelResponseDto, travel);
     } catch (err) {
       this.logger.error('Unexpected error in findOne:', err);
       throw new InternalServerErrorException(
@@ -148,26 +115,26 @@ export class TravelService {
   async update(
     id: string,
     updateTravelDto: UpdateTravelDto,
-    supabase: SupabaseClient,
-  ) {
+  ): Promise<Travel> {
     try {
-      const { data, error } = await supabase
-        .from('ta_travels')
-        .update(updateTravelDto)
-        .eq('id', id)
-        .single();
+      const updatedTravel = await this.userModel.findByIdAndUpdate(
+        id,
+        updateTravelDto,
+        { new: true },
+      ).exec();
 
-      if (error) {
-        this.logger.error('Error updating travel:', error);
+      if (!updatedTravel) {
+        this.logger.error('Travel not found with id:', {id});
         throw new BadRequestException(
-          `Error updating travel: ${error.message}`,
+          `Travel not found with id: ${id}`,
         );
       }
 
-      this.logger.info('Travel updated successfully:', data);
+      this.logger.info('Travel updated successfully:', updatedTravel);
       await this.cacheManager.del(`travel:${id}`);
-      await this.refreshCache(supabase);
-      return data;
+      await this.cacheManager.del('travel:all');
+      await this.cacheManager.del(`travel:user:${updatedTravel.get('user_id')}`);
+      return updatedTravel;
     } catch (err) {
       this.logger.error('Unexpected error in update:', err);
       throw new InternalServerErrorException(
@@ -176,24 +143,21 @@ export class TravelService {
     }
   }
 
-  async remove(id: string, supabase: SupabaseClient): Promise<void> {
+  async remove(id: string): Promise<void> {
     try {
-      const { data, error } = await supabase
-        .from('ta_travels')
-        .delete()
-        .eq('id', id)
-        .single();
+      const deletedTravel = await this.userModel.findByIdAndDelete(id).exec();
 
-      if (error) {
-        this.logger.error('Error deleting travel:', error);
+      if (!deletedTravel) {
+        this.logger.error('Travel not found with id:', {id});
         throw new BadRequestException(
-          `Error deleting travel: ${error.message}`,
+          `Travel not found with id: ${id}`,
         );
       }
 
-      this.logger.info('Travel deleted successfully:', data);
+      this.logger.info('Travel deleted successfully:', deletedTravel);
       await this.cacheManager.del(`travel:${id}`);
-      await this.refreshCache(supabase);
+      await this.cacheManager.del('travel:all');
+      await this.cacheManager.del(`travel:user:${deletedTravel.get('user_id')}`);
     } catch (err) {
       this.logger.error('Unexpected error in remove:', err);
       throw new InternalServerErrorException(
@@ -202,26 +166,20 @@ export class TravelService {
     }
   }
 
-  async refreshCache(supabase: SupabaseClient): Promise<void> {
+  async refreshCache(): Promise<void> {
     try {
-      const { data, error } = await supabase.from('ta_travels').select('*');
+      const travels = await this.userModel.find().exec();
 
-      if (error) {
-        this.logger.error('Error refreshing cache:', error);
-        throw new BadRequestException(
-          `Error refreshing cache: ${error.message}`,
-        );
-      }
+      this.logger.info('Cache refreshed successfully:', travels);
+      await this.cacheManager.set('travel:all', travels, 0);
 
-      this.logger.info('Cache refreshed successfully:', data);
-      await this.cacheManager.set('travel:all', data, 0);
-
-      for (const travel of data) {
-        const travelKey = `travel:${travel.id}`;
+      for (const travel of travels) {
+        const travelKey = `travel:${travel._id}`;
         await this.cacheManager.set(travelKey, travel, 0);
 
-        const userKey = `travel:user:${travel.user_id}`;
-        await this.cacheManager.set(userKey, travel, 0);
+        const userKey = `travel:user:${travel.get('user_id')}`;
+        const userTravels = await this.userModel.find({ user_id: travel.get('user_id') }).exec();
+        await this.cacheManager.set(userKey, userTravels, 0);
       }
     } catch (err) {
       this.logger.error('Unexpected error in refreshCache:', err);
