@@ -20,14 +20,17 @@ export class TravelService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  async create(travel: CreateTravelDto): Promise<Travel> {
+  async create(travel: CreateTravelDto): Promise<TravelResponseDto> {
+    this.logger.info("Creating travel:", travel);
     try {
       this.logger.info("Creating travel:", travel);
       const createdTravel = await this.userModel.create(travel);
 
       this.logger.info("Travel created successfully:", createdTravel);
       await this.refreshCache();
-      return createdTravel.toObject();
+      return plainToInstance(TravelResponseDto, createdTravel.toObject(), { 
+        enableImplicitConversion: true 
+      });
     } catch (err) {
       this.logger.error("Unexpected error in create:", err);
       throw new InternalServerErrorException(
@@ -42,14 +45,14 @@ export class TravelService {
       const cachedTravel = await this.cacheManager.get<Travel[]>(cacheKey);
       if (cachedTravel) {
         this.logger.info("Returning cached travel");
-        return plainToInstance(TravelResponseDto, cachedTravel);
+        return plainToInstance(TravelResponseDto, cachedTravel, { enableImplicitConversion: true });
       }
 
       const travels = await this.userModel.find().lean().exec();
       this.logger.info("Travel fetched successfully:", travels);
 
       await this.cacheManager.set(cacheKey, travels, 0);
-      return plainToInstance(TravelResponseDto, travels);
+      return plainToInstance(TravelResponseDto, travels, { enableImplicitConversion: true });
     } catch (err) {
       this.logger.error("Unexpected error in findAll:", err);
       throw new InternalServerErrorException(
@@ -74,7 +77,7 @@ export class TravelService {
 
       this.logger.info("Travel fetched successfully:", travels);
       await this.cacheManager.set(cacheKey, travels, 0);
-      return plainToInstance(TravelResponseDto, travels);
+      return plainToInstance(TravelResponseDto, travels, { enableImplicitConversion: true });
     } catch (err) {
       this.logger.error("Unexpected error in findAllByUserId:", err);
       throw new InternalServerErrorException(
