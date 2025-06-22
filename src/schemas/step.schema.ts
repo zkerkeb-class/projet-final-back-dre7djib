@@ -18,6 +18,9 @@ export class Step extends Document {
   @Prop()
   place: string;
 
+  @Prop()
+  location: string;
+
   @Prop({ type: Object })
   metadata_fields: Record<string, any>;
 

@@ -27,6 +27,10 @@ export class UpdateStepDto extends PartialType(CreateStepDto) {
   @IsOptional()
   end_date: string;
 
+  @IsString()
+  @IsOptional()
+  location: string;
+
   @IsJSON()
   @IsOptional()
   metadata_fields: object;

@@ -28,6 +28,9 @@ export class ResponseStepDto {
   end_date: string;
 
   @Expose()
+  location: string;
+
+  @Expose()
   metadata_fields: object;
 
   @Expose()
