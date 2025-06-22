@@ -72,6 +72,7 @@ export class StepService {
 
       const steps = await this.stepModel
         .find({ travel_id: travelId })
+        .sort({ start_date: 1 })
         .lean()
         .exec();
       this.logger.info("Step fetched successfully:", steps);
