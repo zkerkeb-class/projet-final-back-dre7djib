@@ -164,7 +164,7 @@ export class TravelService {
 
   async refreshCache(): Promise<void> {
     try {
-      const travels = await this.userModel.find().exec();
+      const travels = await this.userModel.find().lean().exec();
 
       this.logger.info("Cache refreshed successfully:", travels);
       await this.cacheManager.set("travel:all", travels, 0);
@@ -174,9 +174,9 @@ export class TravelService {
         await this.cacheManager.set(travelKey, travel, 0);
       }
 
-      const userTravelsMap = new Map<string, Travel[]>();
+      const userTravelsMap = new Map<string, any[]>();
       for (const travel of travels) {
-        const userId = travel.get("user_id")?.toString();
+        const userId = travel.user_id?.toString();
         if (!userTravelsMap.has(userId)) {
           userTravelsMap.set(userId, []);
         }
